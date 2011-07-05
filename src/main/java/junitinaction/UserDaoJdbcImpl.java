@@ -69,7 +69,6 @@ public class UserDaoJdbcImpl implements UserDAO {
 
     @Override
     public long addUser(User user) throws SQLException {
-        //    PreparedStatement pstmt = connection.prepareStatement("INSERT INTO users VALUES (?,?,?)", Statement.RETURN_GENERATED_KEYS);
         connection.setAutoCommit(false);
         PreparedStatement pstmt = connection.prepareStatement("INSERT INTO users (username, first_name, last_name) VALUES (?,?,?)");
         try {

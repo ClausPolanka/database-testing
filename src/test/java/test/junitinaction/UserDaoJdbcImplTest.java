@@ -5,6 +5,7 @@ import junitinaction.UserDaoJdbcImpl;
 import org.dbunit.Assertion;
 import org.dbunit.dataset.DataSetException;
 import org.dbunit.dataset.IDataSet;
+import org.dbunit.dataset.ReplacementDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.hsqldb.HsqldbConnection;
 import org.dbunit.operation.DatabaseOperation;
@@ -73,6 +74,38 @@ public class UserDaoJdbcImplTest {
         assertTrue(id > 0);
         IDataSet actualDataSet = dbunitConnection.createDataSet(ONLY_USER_TABLE);
         Assertion.assertEqualsIgnoreCols(setupDataSet, actualDataSet, USERS_TABLE, IGNORE_ID);
+    }
+
+    @Test
+    public void testGetUserByIdReplacingIds() throws Exception {
+        long id = 42;
+        IDataSet setupDataSet = getReplacedDataSet("/user-token.xml", id);
+        DatabaseOperation.INSERT.execute(dbunitConnection, setupDataSet);
+        User user = dao.getUserById(id);
+        assertUser(user);
+    }
+
+    @Test
+    public void testAddUserReplacingIds() throws Exception {
+        IDataSet setupDataSet = getDataSet("/user-token.xml");
+        DatabaseOperation.DELETE_ALL.execute(dbunitConnection, setupDataSet);
+        User user = newUser();
+        long id = dao.addUser(user);
+        assertTrue(id > 0);
+        IDataSet expectedDataSet = getReplacedDataSet(setupDataSet, id);
+        IDataSet actualDataSet = dbunitConnection.createDataSet();
+        Assertion.assertEquals(expectedDataSet, actualDataSet);
+    }
+
+    private IDataSet getReplacedDataSet(String name, long id) throws IOException, DataSetException {
+        IDataSet originalDataSet = getDataSet(name);
+        return getReplacedDataSet(originalDataSet, id);
+    }
+
+    private IDataSet getReplacedDataSet(IDataSet originalDataSet, long id) {
+        ReplacementDataSet replacementDataSet = new ReplacementDataSet(originalDataSet);
+        replacementDataSet.addReplacementObject("[ID]", id);
+        return replacementDataSet;
     }
 
     private IDataSet getDataSet(String name) throws IOException, DataSetException {

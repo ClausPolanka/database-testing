@@ -6,6 +6,7 @@ import org.dbunit.Assertion;
 import org.dbunit.dataset.DataSetException;
 import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.ReplacementDataSet;
+import org.dbunit.dataset.SortedDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.hsqldb.HsqldbConnection;
 import org.dbunit.operation.DatabaseOperation;
@@ -21,16 +22,18 @@ import java.io.Reader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static test.junitinaction.EntitiesHelper.assertUser;
 import static test.junitinaction.EntitiesHelper.newUser;
 
 public class UserDaoJdbcImplTest {
     private static final String IGNORE_SCHEMA = null;
     private static final String USERS_TABLE = "users";
-    private static final String[] ONLY_USER_TABLE = new String[] {USERS_TABLE};
-    private static final String[] IGNORE_ID = new String[] { "id" };
+    private static final String[] ONLY_USER_TABLE = new String[]{USERS_TABLE};
     private static final String USER_XML = "/user.xml";
+    private static final String[] IGNORE_ID = new String[]{"id"};
+    private static final String ORIGINAL_OBJECT = "[ID]";
 
     private static UserDaoJdbcImpl dao = new UserDaoJdbcImpl();
     private static Connection connection;
@@ -97,14 +100,37 @@ public class UserDaoJdbcImplTest {
         Assertion.assertEquals(expectedDataSet, actualDataSet);
     }
 
+    @Test
+    public void testNULL() throws Exception {
+        IDataSet okDataSet = getDataSet("/user-ok.xml");
+        DatabaseOperation.CLEAN_INSERT.execute(dbunitConnection, okDataSet);
+        IDataSet actualDataSet = dbunitConnection.createDataSet();
+        Assertion.assertEquals(okDataSet, actualDataSet);
+        IDataSet revertedDataSet = getDataSet("/user-reverted.xml");
+        IDataSet sortedDataSet = new SortedDataSet(revertedDataSet);
+        Assertion.assertEquals(sortedDataSet, actualDataSet);
+    }
+
+    @Test
+    public void testNULLReplacementDataSet() throws Exception {
+        IDataSet okDataSet = getDataSet("/user-ok.xml");
+        DatabaseOperation.CLEAN_INSERT.execute(dbunitConnection, okDataSet);
+        IDataSet actualDataSet = dbunitConnection.createDataSet();
+        Assertion.assertEquals(okDataSet, actualDataSet);
+        IDataSet revertedDataSet = getReplacedDataSet("/user-replacement.xml", -1);
+        IDataSet sortedDataSet = new SortedDataSet(revertedDataSet);
+        Assertion.assertEquals(sortedDataSet, actualDataSet);
+    }
+
     private IDataSet getReplacedDataSet(String name, long id) throws IOException, DataSetException {
         IDataSet originalDataSet = getDataSet(name);
         return getReplacedDataSet(originalDataSet, id);
     }
 
-    private IDataSet getReplacedDataSet(IDataSet originalDataSet, long id) {
+    private IDataSet getReplacedDataSet(IDataSet originalDataSet, long replacementObject) {
         ReplacementDataSet replacementDataSet = new ReplacementDataSet(originalDataSet);
-        replacementDataSet.addReplacementObject("[ID]", id);
+        replacementDataSet.addReplacementObject(ORIGINAL_OBJECT, replacementObject);
+        replacementDataSet.addReplacementObject("[NULL]", null);
         return replacementDataSet;
     }
 
